@@ -1,0 +1,25 @@
+{
+  "name": "bigcommerce-product-options-price-diff",
+  "description": "Get price diff for product options in BigCommerce",
+  "version": "0.1.0",
+  "homepage": "https://github.com/brandlabs/bigcommerce-product-options-price-diff#readme",
+  "author": {
+    "name": "João Henrique de Andrade Bruni",
+    "email": "j.bruni@brandlabs.us"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brandlabs/bigcommerce-product-options-price-diff.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "keywords": [
+    "BigCommerce",
+    "product options",
+    "product rules",
+    "price diff"
+  ],
+  "main": "src/product-options-price-diff.js"
+}
