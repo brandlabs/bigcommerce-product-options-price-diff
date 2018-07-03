@@ -88,13 +88,17 @@ class PriceDiff {
     /**
      * Get prices for product options.
      */
-    async loadPrices() {
-        const promises = [];
-        let productOption;
-        let optionValue;
-        let attributes;
-        let i;
-        let j;
+    async loadPrices(useCache = true) {
+        if (useCache) {
+            this.options.productOptions.forEach(productOption => {
+                productOption.values.forEach(optionValue => {
+                    const priceDiff = JSON.parse(localStorage.getItem(`price-diff-${this.options.productId}-${optionValue.id}`) || 'null');
+                    if (priceDiff !== null) {
+                        this.onGetPriceDiff(optionValue.id, priceDiff);
+                    }
+                });
+            });
+        }
 
         if (this.options.startingPrice === null) {
             this.options.startingPrice = await this.getStartingPrice();
@@ -104,15 +108,15 @@ class PriceDiff {
             throw new Error('Failed to obtain starting price.');
         }
 
-        for (i = 0; i < this.options.productOptions.length; i++) {
-            productOption = this.options.productOptions[i];
-            for (j = 0; j < productOption.values.length; j++) {
-                optionValue = productOption.values[j];
-                attributes = {};
+        const promises = [];
+
+        this.options.productOptions.forEach(productOption => {
+            productOption.values.forEach(optionValue => {
+                const attributes = {};
                 attributes[`attribute[${productOption.id}]`] = optionValue.id;
                 promises.push(this.getPrice(attributes));
-            }
-        }
+            });
+        });
 
         await Promise.all(promises);   // eslint-disable-line no-unused-expressions
 
@@ -122,8 +126,8 @@ class PriceDiff {
     /**
      * Method called each time a price is obtained from server.
      *
-     * @param  object attributes
-     * @param  number price
+     * @param object attributes
+     * @param number price
      */
     onGetPrice(attributes, price) {
         const keys = attributes ? Object.keys(attributes) : 0;
@@ -131,13 +135,26 @@ class PriceDiff {
             const optionValueId = attributes[keys[0]];
             const priceDiff = price - this.options.startingPrice;
 
-            this.priceDiffs[optionValueId] = priceDiff;
+            // Persist
+            localStorage.setItem(`price-diff-${this.options.productId}-${optionValueId}`, JSON.stringify(priceDiff));
 
-            if (typeof this.options.onGetPriceDiff === 'function') {
-                this.options.onGetPriceDiff(optionValueId, priceDiff);
-            } else {
-                this.updateOptionLabel(optionValueId, priceDiff);
-            }
+            this.onGetPriceDiff(optionValueId, priceDiff);
+        }
+    }
+
+    /**
+     * Method called each time a price diff is retrieved from cache or server.
+     *
+     * @param number optionValueId
+     * @param number price
+     */
+    onGetPriceDiff(optionValueId, priceDiff) {
+        this.priceDiffs[optionValueId] = priceDiff;
+
+        if (typeof this.options.onGetPriceDiff === 'function') {
+            this.options.onGetPriceDiff(optionValueId, priceDiff);
+        } else {
+            this.updateOptionLabel(optionValueId, priceDiff);
         }
     }
 
@@ -145,8 +162,8 @@ class PriceDiff {
      * Default "onGetPriceDiff" callback.
      * It appends an add/subtract text to the option label.
      *
-     * @param  number optionValueId
-     * @param  number priceDiff
+     * @param number optionValueId
+     * @param number priceDiff
      */
     updateOptionLabel(optionValueId, priceDiff) {
         const $label = $(this.options.optionLabelSelector.replace('%f', optionValueId));
