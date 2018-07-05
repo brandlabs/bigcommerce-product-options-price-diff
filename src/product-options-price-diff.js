@@ -16,6 +16,7 @@ const defaultOptions = {
     productIdSelector: 'input[name=product_id]',
     onGetPriceDiff: null,
     optionLabelSelector: 'label[data-product-attribute-value="%f"]',
+    scope: null,
 };
 
 class PriceDiff {
@@ -30,7 +31,7 @@ class PriceDiff {
         this.options = options;
 
         if (this.options.productId === null) {
-            this.options.productId = $(this.options.productIdSelector).val();
+            this.options.productId = $(this.options.productIdSelector, this.options.scope).val();
         }
 
         // Immediately load the prices
@@ -166,7 +167,7 @@ class PriceDiff {
      * @param number priceDiff
      */
     updateOptionLabel(optionValueId, priceDiff) {
-        const $label = $(this.options.optionLabelSelector.replace('%f', optionValueId));
+        const $label = $(this.options.optionLabelSelector.replace('%f', optionValueId), this.options.scope);
         const $span = $('<span>').addClass('js-price-diff');
         $('.js-price-diff', $label).remove();
 
