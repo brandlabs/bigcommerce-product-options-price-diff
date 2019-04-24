@@ -4,7 +4,7 @@
 
 import $ from 'jquery';
 import _ from 'lodash';
-import utils from '@bigcommerce/stencil-utils';
+import stencilUtils from '@bigcommerce/stencil-utils';
 
 const defaultOptions = {
     productOptions: [],
@@ -76,7 +76,7 @@ class PriceDiff {
             product_id: productId,
         }, attributes);
         return new Promise((resolve, reject) => {
-            utils.api.productAttributes.optionChange(productId, $.param(params), template, (err, response) => {
+            stencilUtils.api.productAttributes.optionChange(productId, $.param(params), template, (err, response) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -105,7 +105,7 @@ class PriceDiff {
             this.options.startingPrice = await this.getStartingPrice();
         }
 
-        if (!this.options.startingPrice) {
+        if (!this.options.startingPrice && (this.options.startingPrice !== 0)) {
             throw new Error('Failed to obtain starting price.');
         }
 
@@ -119,7 +119,9 @@ class PriceDiff {
             });
         });
 
-        await Promise.all(promises);   // eslint-disable-line no-unused-expressions
+        /* eslint-disable no-unused-expressions */
+        await Promise.all(promises);
+        /* eslint-enable no-unused-expressions */
 
         return this.priceDiffs;
     }
