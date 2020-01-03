@@ -72,6 +72,11 @@ You are done.
 
 The product price differences shall appear after each product option label which adds to or subtracts from the price.
 
+## Customization
+
+### onGetPrice Callback
+- callback appends an add/subtract text to the option label.
+
 ## Settings
 
 You can further control the functionality by providing specific settings to the object passed as argument to `productOptionsPriceDiff` call.

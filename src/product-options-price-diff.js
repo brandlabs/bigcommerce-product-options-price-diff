@@ -2,9 +2,6 @@
  * Get price diff for product options.
  */
 
-import $ from 'jquery';
-import _ from 'lodash';
-import stencilUtils from '@bigcommerce/stencil-utils';
 
 const defaultOptions = {
     productOptions: [],
@@ -23,7 +20,7 @@ class PriceDiff {
     /**
      * Initialize instance properties.
      *
-     * @param object options
+     * @param options: Number
      */
     constructor(options) {
         this.priceDiffs = {};
@@ -31,7 +28,7 @@ class PriceDiff {
         this.options = options;
 
         if (this.options.productId === null) {
-            this.options.productId = $(this.options.productIdSelector, this.options.scope).val();
+            this.options.productId = document.querySelector(this.options.productIdSelector).value;
         }
 
         // Immediately load the prices
@@ -42,31 +39,36 @@ class PriceDiff {
 
     /**
      * Get starting product price (no options selected).
-     *
      * @return number
      */
     async getStartingPrice() {
-        return await this.getPrice();
+        return this.getPrice();
     }
 
     /**
      * Get product price for the specified set of attributes.
-     *
-     * @param  object attributes
      * @return number
+     * @param attributes: Object
      */
     async getPrice(attributes) {
-        const productAttributesData = await this.getProductAttributesData(attributes);
-        const price = _.get(productAttributesData, this.options.pricePath);
-        this.onGetPrice(attributes, price);
+        let productAttributesData = await this.getProductAttributesData(attributes);
+        let price;
+        this.options.pricePath.split('.').forEach((priceWrapper) => {
+            productAttributesData = productAttributesData[priceWrapper];
+            price = productAttributesData;
+        });
+        this.onGetPrice(attributes, price, (optionValueId, priceDiff) => {
+            this.updateConfig(optionValueId, priceDiff, () => {
+                this.updateOptionLabel(optionValueId, priceDiff);
+            })
+        });
         return price;
     }
 
     /**
      * Get product attributes data for the specified set of attributes.
-     *
-     * @param  object attributes
      * @return Promise
+     * @param attributes: Object
      */
     getProductAttributesData(attributes) {
         const productId = this.options.productId;
@@ -76,7 +78,7 @@ class PriceDiff {
             product_id: productId,
         }, attributes);
         return new Promise((resolve, reject) => {
-            stencilUtils.api.productAttributes.optionChange(productId, $.param(params), template, (err, response) => {
+            stencilUtils.api.productAttributes.optionChange(productId, this._queryParam(params), template, (err, response) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -93,9 +95,11 @@ class PriceDiff {
         if (useCache) {
             this.options.productOptions.forEach(productOption => {
                 productOption.values.forEach(optionValue => {
-                    const priceDiff = JSON.parse(localStorage.getItem(`price-diff-${this.options.productId}-${optionValue.id}`) || 'null');
+                    const priceDiff =this.cacheStorage().get(optionValue.id);
                     if (priceDiff !== null) {
-                        this.onGetPriceDiff(optionValue.id, priceDiff);
+                        this.updateConfig(optionValue.id, priceDiff, () => {
+                            this.updateOptionLabel(optionValue.id, priceDiff);
+                        });
                     }
                 });
             });
@@ -119,65 +123,109 @@ class PriceDiff {
             });
         });
 
-        /* eslint-disable no-unused-expressions */
         await Promise.all(promises);
-        /* eslint-enable no-unused-expressions */
-
         return this.priceDiffs;
     }
 
     /**
      * Method called each time a price is obtained from server.
      *
-     * @param object attributes
-     * @param number price
+     * @param attributes: Number
+     * @param price: Number
+     * @param callback
      */
-    onGetPrice(attributes, price) {
+    onGetPrice(attributes, price, callback) {
         const keys = attributes ? Object.keys(attributes) : 0;
         if (keys.length === 1) {
             const optionValueId = attributes[keys[0]];
             const priceDiff = price - this.options.startingPrice;
 
             // Persist
-            localStorage.setItem(`price-diff-${this.options.productId}-${optionValueId}`, JSON.stringify(priceDiff));
+            this.cacheStorage().set(optionValueId, priceDiff);
 
-            this.onGetPriceDiff(optionValueId, priceDiff);
+            if ( callback && typeof callback === "function") {
+                callback(optionValueId, priceDiff);
+            }
         }
     }
 
     /**
      * Method called each time a price diff is retrieved from cache or server.
      *
-     * @param number optionValueId
-     * @param number price
+     * @param optionValueId: Number
+     * @param priceDiff: Number
+     * @param callback
      */
-    onGetPriceDiff(optionValueId, priceDiff) {
+    updateConfig(optionValueId, priceDiff, callback) {
         this.priceDiffs[optionValueId] = priceDiff;
 
         if (typeof this.options.onGetPriceDiff === 'function') {
             this.options.onGetPriceDiff(optionValueId, priceDiff);
         } else {
-            this.updateOptionLabel(optionValueId, priceDiff);
+            if (typeof callback === 'function') {
+                callback()
+            }
         }
     }
 
     /**
-     * Default "onGetPriceDiff" callback.
-     * It appends an add/subtract text to the option label.
      *
-     * @param number optionValueId
-     * @param number priceDiff
+     * @param optionValueId:Number
+     * @param priceDiff:Number
      */
     updateOptionLabel(optionValueId, priceDiff) {
-        const $label = $(this.options.optionLabelSelector.replace('%f', optionValueId), this.options.scope);
-        const $span = $('<span>').addClass('js-price-diff');
-        $('.js-price-diff', $label).remove();
+        const optionsSelectors = document.querySelectorAll(this.options.optionLabelSelector.replace('%f', optionValueId));
+        optionsSelectors.forEach((optionSelector) => {
+            let span = optionSelector.querySelector('span');
 
-        if (priceDiff > 0) {
-            $label.append($span.text(`[Add $${priceDiff.toFixed(2)}]`));
-        } else if (priceDiff < 0) {
-            $label.append($span.text(`[Subtract $${Math.abs(priceDiff).toFixed(2)}]`));
+            if (span) {
+                span.parentNode.removeChild(span);
+            }
+            span = document.createElement('span');
+            span.classList.add('js-price-diff');
+
+            if (priceDiff > 0) {
+                span.innerText = `[Add $${priceDiff.toFixed(2)}]`;
+                optionSelector.appendChild(span);
+            } else if (priceDiff < 0) {
+                span.innerText = `[Subtract $${Math.abs(priceDiff).toFixed(2)}]`;
+                optionSelector.appendChild(span);
+            }
+        });
+    }
+
+
+    /**
+     * cache storage
+     * @param config
+     * @return {{set(*, *=): void, get(*): any}|any}
+     */
+    cacheStorage(config) {
+        if (!config || !config.key) {
+            config = {
+                key: `price-diff-${this.options.productId}-`
+            }
         }
+
+        return {
+            get(id) {
+                return JSON.parse(window.sessionStorage.getItem(`${config}${id}`) || 'null')
+            },
+            set(id, value) {
+                window.sessionStorage.setItem(`${config}${id}`,  JSON.stringify(value));
+            }
+        }
+    }
+
+    /**
+     * convert to url query param
+     *
+     */
+    _queryParam(source) {
+        const array = [];
+        Object.keys(source).forEach((key) => array.push(encodeURIComponent(key) + "=" + encodeURIComponent(source[key])));
+
+        return array.join("&");
     }
 }
 
