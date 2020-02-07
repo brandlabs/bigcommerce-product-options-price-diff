@@ -21,10 +21,10 @@
     "product rules",
     "price diff"
   ],
-    "scripts": {
-        "build": "webpack --config=webpack.common.js --mode=production",
-        "dev": "webpack --config=webpack.common.js --mode=development"
-    },
+  "scripts": {
+    "build": "npx webpack --config=webpack.common.js --mode=production",
+    "dev": "npx webpack --config=webpack.common.js --mode=development"
+  },
   "main": "dist/product-options-price-diff.js",
   "devDependencies": {
     "babel-core": "^6.26.3",

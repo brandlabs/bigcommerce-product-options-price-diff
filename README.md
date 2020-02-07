@@ -1,8 +1,6 @@
-# BigCommerce product options price diff
+# BigCommerce Product Option Price Difference
 
-Get price diff for product options in BigCommerce.
-
-Purpose: display the value of price rule adjustments next to the corresponding product option, in a Stencil theme.
+Display the product option price difference for each corresponding product option under a Stencil theme.
 
 ## Install
 
@@ -84,3 +82,14 @@ You can further control the functionality by providing specific settings to the 
 This function returns a `PriceDiff` instance, which can also be used for more advanced customization.
 
 Check `src/product-options-price-diff.js` file for details.
+
+## Authors
+* João Henrique de Andrade Bruni
+* Shota Karkashadze
+* Martin Chuka
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+
+[![alt text](./assets/images/brandlabs.png)](http://www.brandlabs.us/?utm_source=gitlab&utm_medium=technology_referral&utm_campaign=brandlabs-bigcommerce-product-options-price)
